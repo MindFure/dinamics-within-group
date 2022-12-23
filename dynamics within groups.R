@@ -201,18 +201,36 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           
         }
         if(all(col_type_list=="cat")){
-          contingency.table.1 = table(data_df[,i],data_df[,j])
-          contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-          contingency.table.1[row(contingency.table.1) == 
-                                col(contingency.table.1) & contingency.table.1 == 0] <- 1
-          sym_mat <- contingency.table.1  
-          contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-          print(contingency.table.1)
-          test <- nominalSymmetryTest(contingency.table.1,
-                                      digits     = 3,
-                                      MonteCarlo = TRUE,
-                                      ntrial     = 1000000)$Global.test.for.symmetry
-          test <- p_value_formatted(test$p.value)
+          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
+            contingency.table.1 = table(data_df[,i],data_df[,j])
+            contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
+            contingency.table.1[row(contingency.table.1) == 
+                                  col(contingency.table.1) & contingency.table.1 == 0] <- 1
+            sym_mat <- contingency.table.1  
+            contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
+            print(contingency.table.1)
+            test <- nominalSymmetryTest(contingency.table.1,
+                                        digits     = 3,
+                                        MonteCarlo = TRUE,
+                                        ntrial     = 1000000)$Global.test.for.symmetry
+            test <- p_value_formatted(test$p.value)
+          }
+          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
+            cat ("\none of the indicators of NA")
+            
+            test <- NULL
+          } 
+          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
+            cat ("\none of the indicators of NA")
+            
+            test <- NULL       
+          }
+          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
+            cat ("\none of the indicators of NA")
+            
+            test <- NULL         
+          }
+          
         }
         #------------------------------------------------------------
         if(all(col_type_list=="num")){
