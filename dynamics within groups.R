@@ -8,7 +8,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
   for(c in 1:length(comb_list)){
     for(g in id_groups){
       
-      
+      # data$null <- NA
       x = unlist(columns.list, recursive = TRUE)
       x.length = length(x)
       id.columns   = x[seq(1,x.length,2)]
@@ -174,16 +174,31 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
         if(all(col_type_list=="bin")){
           data_df <- as.matrix(apply(data_df, 2, as.numeric))
           #if(all(is.na(data_df[,i])==T))
-          if(all(data_df[,i]=="1")|all(data_df[,j]=="1")){
-            test1 <- fisher.test(list.append(data_df[,i],0),list.append(data_df[,j],0))
-            test <- mcnemar.test(list.append(data_df[,i],0),list.append(data_df[,j],0),correct = TRUE)
-          }else if(all(data_df[,i]=="0")|all(data_df[,j]=="0")){
-            test1 <- fisher.test(list.append(data_df[,i],1),list.append(data_df[,j],1))
-            test <- mcnemar.test(list.append(data_df[,i],1),list.append(data_df[,j],1),correct = TRUE)
-          }else{
-            test1 <- fisher.test(data_df[,i],data_df[,j])
-            test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
+          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
+            if(all(data_df[,i]=="1")|all(data_df[,j]=="1")){
+              test1 <- fisher.test(list.append(data_df[,i],0),list.append(data_df[,j],0))
+              test <- mcnemar.test(list.append(data_df[,i],0),list.append(data_df[,j],0),correct = TRUE)
+            }else if(all(data_df[,i]=="0")|all(data_df[,j]=="0")){
+              test1 <- fisher.test(list.append(data_df[,i],1),list.append(data_df[,j],1))
+              test <- mcnemar.test(list.append(data_df[,i],1),list.append(data_df[,j],1),correct = TRUE)
+            }
           }
+          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
+            cat ("\none of the indicators of NA")
+            test1 <- NULL
+            test <- NULL
+          } 
+          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
+            cat ("\none of the indicators of NA")
+            test1 <- NULL
+            test <- NULL       
+          }
+          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
+            cat ("\none of the indicators of NA")
+            test1 <- NULL
+            test <- NULL         
+          }
+          
         }
         if(all(col_type_list=="cat")){
           contingency.table.1 = table(data_df[,i],data_df[,j])
