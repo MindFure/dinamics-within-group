@@ -8,7 +8,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
   for(c in 1:length(comb_list)){
     for(g in id_groups){
       
-      # data$null <- NA
+      
       x = unlist(columns.list, recursive = TRUE)
       x.length = length(x)
       id.columns   = x[seq(1,x.length,2)]
