@@ -143,7 +143,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
             if(unique.flag == 1 ) {
               test = NULL
             } else{
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE)
+              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
             }
           }
           #----------------------------------------------------------------
@@ -168,7 +168,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
               test = NULL
             } else{
               
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE)
+              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
               
             }
           }
@@ -193,7 +193,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
             if(unique.flag == 1 ) {
               test = NULL
             } else{
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE)
+              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
             }
           }
         }
@@ -209,14 +209,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
               test <- mcnemar.test(list.append(data_df[,i],1),list.append(data_df[,j],1),correct = TRUE)
             }else{
               unique.flag = 0
-              if ( length(data_df[,i]) < 3  )
+              if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F  )
               {
                 
                 cat ("\nunique values in first group too small")
                 unique.flag = 1
                 
               }
-              if ( length(data_df[,j]) < 3  )
+              if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F  )
               {
                 
                 cat ("\nunique values in first group too small")
@@ -238,14 +238,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
             unique.flag = 0
-            if ( length(data_df[,i]) < 3  )
+            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(data_df[,j]) < 3  )
+            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -264,14 +264,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           } 
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
             unique.flag = 0
-            if ( length(data_df[,i]) < 3  )
+            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(data_df[,j]) < 3  )
+            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -290,14 +290,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
             unique.flag = 0
-            if ( length(data_df[,i]) < 3  )
+            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(data_df[,j]) < 3  )
+            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -320,14 +320,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
             unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
+            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(unique(data_df[,j])) < 3  )
+            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -357,14 +357,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
             unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
+            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F)
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(unique(data_df[,j])) < 3  )
+            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -391,14 +391,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           } 
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
             unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
+            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(unique(data_df[,j])) < 3  )
+            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -425,14 +425,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
             unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
+            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
             {
               
               cat ("\nunique values in first group too small")
               unique.flag = 1
               
             }
-            if ( length(unique(data_df[,j])) < 3  )
+            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
             {
               
               cat ("\nunique values in first group too small")
@@ -513,7 +513,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
           if(is.null(test)){
             diff.1 <- "NA"
             p.value <- "NA"
-            result[k, length(med)+2] <- diff.1
+            result[k, length(med)+2] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",diff.1)
             result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
           }
           
