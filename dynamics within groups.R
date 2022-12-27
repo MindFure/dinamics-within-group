@@ -1,7 +1,7 @@
 library(DescTools)
 library(IDPmisc)
 library(rlist)
-dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FILENAME){
+dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FILENAME,comp.flag=T){
   result_list <- list()
   res_ls <- list()
   comb_list <- lapply(combination,combn,2,simplify=FALSE)
@@ -24,6 +24,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
       comb_list_N_B_C <- combination#comb_list
       
       comb_test <- unlist(comb_list_N_B_C[c])
+      print(paste("22",comb_test))
       comb_test1 <-unlist(comb_list_N_B_C,combn,recursive = FALSE)
       print(paste("33",comb_test1))
       
@@ -31,12 +32,28 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
       df = as.matrix(data[data[[id.group]] %in% g,])
       #df <- as.matrix(apply(df, 2, as.numeric))
       df <- df[,unique(unlist(comb_list[c]))]
-      
+      #df.comp <- as.data.frame(df)
       col.list <- dplyr::bind_rows(columns.list)
       
       col_type_list <-lapply(comb_test, function(x) col.list$type[match(x, col.list$id)])
-      col_type_list <- unlist(col_type_list)
       
+      col_type_list <- unlist(col_type_list)
+      print(col_type_list)
+      common.list <- lapply(1:length(comb_test), function(x) list(id = comb_test[[x]], type = col_type_list[[x]]))
+      print(paste("1111",common.list))
+      #-----------------------------------------------------------------
+      if(comp.flag==T){
+        sr <- cmp.group.all(id.group     = id.group,
+                            group.labels = id_groups,
+                            columns.list = common.list,
+                            data         = data,
+                            save.file.cmp.2groups    = F,
+                            PATH         = path.dir.out,
+                            FILENAME     = paste('не открывать',c),
+                            result = NULL)
+        rr <- as.matrix(sr[,5])
+        rr <- as.vector(rr)
+      }
       if(is.matrix(df)){
         df <- t(apply(df, 1, function(x) {
           if(any(is.na(x))) x[1:length(x)] <- NA
@@ -86,8 +103,17 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
       #df.matrix <- na.count.string(df[,1])
       #print(paste(df.matrix))
       result <- data.frame(matrix(NA,ncol=length(med)+2,nrow=1))
-      result[1,] <- c(paste0(g,"\nN=",df.matrix),med,NA)
-      
+      result[1,] <- c(paste0(g,"\nN=",df.matrix),med,"")
+      if(comp.flag==T){
+        if(g==tail(id_groups, n=1)){
+          result[ncol(result)+1-3+1,] <- c(paste("Сравнение"),rr,"")
+          result[ncol(result)+1-3+1,ncol(result)+1] <- ""
+          
+          # if(all(col_type_list=="cat")){
+          # result <- result[complete.cases(result[ ,1]),]
+          # }
+        }
+      }
       for(k in 1:length(comb_list[[1]])){
         #отсюда num
         
@@ -181,54 +207,255 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
             }else if(all(data_df[,i]=="0")|all(data_df[,j]=="0")){
               test1 <- fisher.test(list.append(data_df[,i],1),list.append(data_df[,j],1))
               test <- mcnemar.test(list.append(data_df[,i],1),list.append(data_df[,j],1),correct = TRUE)
+            }else{
+              unique.flag = 0
+              if ( length(data_df[,i]) < 3  )
+              {
+                
+                cat ("\nunique values in first group too small")
+                unique.flag = 1
+                
+              }
+              if ( length(data_df[,j]) < 3  )
+              {
+                
+                cat ("\nunique values in first group too small")
+                unique.flag = 1
+                
+              }
+              
+              if(unique.flag == 1 ) {
+                test1 = NULL
+                test = NULL
+              } else{
+                test1 <- fisher.test(data_df[,i],data_df[,j])
+                test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
+                
+              }
+              # test1 <- fisher.test(data_df[,i],data_df[,j])
+              # test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
             }
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
-            cat ("\none of the indicators of NA")
-            test1 <- NULL
-            test <- NULL
+            unique.flag = 0
+            if ( length(data_df[,i]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(data_df[,j]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            
+            if(unique.flag == 1 ) {
+              test1 = NULL
+              test = NULL
+            } else{
+              test1 <- fisher.test(data_df[,i],data_df[,j])
+              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
+              
+            }
           } 
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
-            cat ("\none of the indicators of NA")
-            test1 <- NULL
-            test <- NULL       
+            unique.flag = 0
+            if ( length(data_df[,i]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(data_df[,j]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            
+            if(unique.flag == 1 ) {
+              test1 = NULL
+              test = NULL
+            } else{
+              test1 <- fisher.test(data_df[,i],data_df[,j])
+              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
+              
+            }       
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
-            cat ("\none of the indicators of NA")
-            test1 <- NULL
-            test <- NULL         
+            unique.flag = 0
+            if ( length(data_df[,i]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(data_df[,j]) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            
+            if(unique.flag == 1 ) {
+              test1 = NULL
+              test = NULL
+            } else{
+              test1 <- fisher.test(data_df[,i],data_df[,j])
+              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
+              
+            }        
           }
           
         }
         if(all(col_type_list=="cat")){
+          
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
-            contingency.table.1 = table(data_df[,i],data_df[,j])
-            contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-            contingency.table.1[row(contingency.table.1) == 
-                                  col(contingency.table.1) & contingency.table.1 == 0] <- 1
-            sym_mat <- contingency.table.1  
-            contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-            print(contingency.table.1)
-            test <- nominalSymmetryTest(contingency.table.1,
-                                        digits     = 3,
-                                        MonteCarlo = TRUE,
-                                        ntrial     = 1000000)$Global.test.for.symmetry
-            test <- p_value_formatted(test$p.value)
+            unique.flag = 0
+            if ( length(unique(data_df[,i])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(unique(data_df[,j])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            
+            if(unique.flag == 1 ) {
+              test = NULL
+            } else{
+              contingency.table.1 = table(data_df[,i],data_df[,j])
+              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
+              contingency.table.1[row(contingency.table.1) == 
+                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
+              sym_mat <- contingency.table.1  
+              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
+              print(contingency.table.1)
+              test <- nominalSymmetryTest(contingency.table.1,
+                                          digits     = 3,
+                                          MonteCarlo = TRUE,
+                                          ntrial     = 1000000)$Global.test.for.symmetry
+              test <- p_value_formatted(test$p.value)
+            }
+            
+            
+            
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
-            cat ("\none of the indicators of NA")
+            unique.flag = 0
+            if ( length(unique(data_df[,i])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(unique(data_df[,j])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
             
-            test <- NULL
+            if(unique.flag == 1 ) {
+              test = NULL
+            } else{
+              contingency.table.1 = table(data_df[,i],data_df[,j])
+              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
+              contingency.table.1[row(contingency.table.1) == 
+                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
+              sym_mat <- contingency.table.1  
+              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
+              print(contingency.table.1)
+              test <- nominalSymmetryTest(contingency.table.1,
+                                          digits     = 3,
+                                          MonteCarlo = TRUE,
+                                          ntrial     = 1000000)$Global.test.for.symmetry
+              test <- p_value_formatted(test$p.value)
+            }
           } 
           if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
-            cat ("\none of the indicators of NA")
+            unique.flag = 0
+            if ( length(unique(data_df[,i])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(unique(data_df[,j])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
             
-            test <- NULL       
+            if(unique.flag == 1 ) {
+              test = NULL
+            } else{
+              contingency.table.1 = table(data_df[,i],data_df[,j])
+              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
+              contingency.table.1[row(contingency.table.1) == 
+                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
+              sym_mat <- contingency.table.1  
+              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
+              print(contingency.table.1)
+              test <- nominalSymmetryTest(contingency.table.1,
+                                          digits     = 3,
+                                          MonteCarlo = TRUE,
+                                          ntrial     = 1000000)$Global.test.for.symmetry
+              test <- p_value_formatted(test$p.value)
+            }       
           }
           if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
-            cat ("\none of the indicators of NA")
+            unique.flag = 0
+            if ( length(unique(data_df[,i])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
+            if ( length(unique(data_df[,j])) < 3  )
+            {
+              
+              cat ("\nunique values in first group too small")
+              unique.flag = 1
+              
+            }
             
-            test <- NULL         
+            if(unique.flag == 1 ) {
+              test = NULL
+            } else{
+              contingency.table.1 = table(data_df[,i],data_df[,j])
+              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
+              contingency.table.1[row(contingency.table.1) == 
+                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
+              sym_mat <- contingency.table.1  
+              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
+              print(contingency.table.1)
+              test <- nominalSymmetryTest(contingency.table.1,
+                                          digits     = 3,
+                                          MonteCarlo = TRUE,
+                                          ntrial     = 1000000)$Global.test.for.symmetry
+              test <- p_value_formatted(test$p.value)
+            }        
           }
           
         }
@@ -289,6 +516,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
             result[k, length(med)+2] <- diff.1
             result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
           }
+          
         }
         if(all(col_type_list=="cat")){
           if(!is.null(test)){
@@ -304,6 +532,7 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
             result[k, length(med)+2] <- ""#paste0(i,"-",j,": ",diff.1)
             result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
           }
+          
         }
         #досюда num
         
@@ -312,7 +541,14 @@ dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FIL
       
       result[1, length(med)+2]=paste(result[,length(med)+2],collapse = "\n")
       result[1, length(med)+3]=paste(result[,length(med)+3],collapse = "\n")
-      result_list[[g]] <- result[1,]
+      # if(g==tail(id_groups, n=1)){
+      # result[2,length(med)]=paste(result[,length(med)],collapse = "\n")
+      # }
+      result <- result[complete.cases(result[ ,1]),]
+      last.res <- tail(result,n=1)
+      #result <- na.omit(result)
+      
+      result_list[[g]] <- result[complete.cases(result[ ,1]),]
     }
     
     
