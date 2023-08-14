@@ -1,579 +1,311 @@
+source("C:/Users/works/Documents/type_colomns_data.R")
+source("C:/Users/works/Documents/standardize_data.R")
+source("C:/Users/works/Documents/conduct_tests.R")
+source("C:/Users/works/Documents/format_table_with_na_split.R")
+
 library(DescTools)
 library(IDPmisc)
 library(rlist)
-dynamics <- function(data, id_groups, combination,columns.list,id.group,PATH,FILENAME,comp.flag=T){
+library(flextable)
+library(officer)
+library(purrr)
+library(magrittr)
+
+dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=NULL){
+  
+  if(mi)
+  #-----------------------------------------------------------------------------
+  # Извлечение всех значений name.title
+  name_titles <- map(list_its, 'name.title') %>% unlist
+  
+  # Вычисление частоты каждого значения
+  #value_counts <- table(name_titles)
+  
+  # Получение значений, которые встречаются два или более раза
+  #allowed_values <- names(value_counts[value_counts >= 2])
+  
+  # Проверка на наличие неверных значений
+  allowed_values <- time.points.title
+
+  # Проверка каждого вложенного списка
+  for(i in seq_along(list_its)) {
+    list_name_titles <- list_its[[i]]$name.title
+    
+    # Проверка на наличие неверных значений
+    incorrect_values <- list_name_titles[!(list_name_titles %in% allowed_values)]
+    
+    if(length(incorrect_values) > 0) {
+      warning(paste0("Найдены некорректные значения в списке '", list_its[[i]]$title, "': ", 
+                  paste(incorrect_values, collapse = ", "), "."))
+    }
+  }
+  
+  print("Все значения name.title корректны.")
+  #-----------------------------------------------------------------------------
+  #browser()
+  # Получение всех уникальных name.title
+  all_name_titles <- map(list_its, 'name.title') %>% unlist %>% unique
+
+  # Создание time_points_title
+  time_points_title <- seq_along(all_name_titles)
+  
+  # Проверка каждого вложенного списка
+  for(i in seq_along(list_its)) {
+    point_times <- list_its[[i]]$point.time
+    
+    # Проверка на наличие неверных значений
+    incorrect_values <- point_times[!(point_times %in% time_points_title)]
+    
+    if(length(incorrect_values) > 0) {
+      warning(paste0("Найдены некорректные значения в списке '", list_its[[i]]$title, "': ", 
+                  paste(incorrect_values, collapse = ", "), "."))
+    }
+  }
+  
+  print("Все значения point.time корректны.")
+  
+  #-----------------------------------------------------------------------------
+  # Проверка на одинаковость длинны списков
+  lengths <- sapply(list_its, function(x) length(x$name.title))
+  all_lengths_equal <- length(unique(lengths)) == 1
+  
+  # Проверяем, что значения идентичны  
+  titles_identical <- identical(list_its[[1]]$name.title, list_its[[2]]$name.title)
+  
+  if(all_lengths_equal && titles_identical) {
+    
+     unique_col_titles <- list_its[[1]]$name.title
+     
+  }else if (all_lengths_equal && !titles_identical){
+  
+    all_titles <- unlist(lapply(list_its, function(x) x$name.title))
+    unique_col_titles <- unique(all_titles)
+  
+  }else if(length(unique(lengths)) < length(lengths)){ 
+    
+  all_titles <- unlist(lapply(list_its, function(x) x$name.title))
+  unique_col_titles <- unique(all_titles) 
+  
+  } else if(length(unique(lengths)) == length(lengths)){
+    
+  #собиравем name.title со всех списков и делаем их уникальными
+  all_titles <- unlist(lapply(list_its, function(x) x$name.title))  
+  unique_col_titles <- unique(all_titles)
+  
+  }
+  #----------------------------------------------------------------------------- 
+  # Создаем пустой список для хранения результатов
   result_list <- list()
-  res_ls <- list()
-  comb_list <- lapply(combination,combn,2,simplify=FALSE)
-  for(c in 1:length(comb_list)){
-    for(g in id_groups){
+  
+  # Создаем пустой список для хранения промежуточных результатов
+  temp_results <- list()
+  
+  # Устанавливаем начальное значение индекса элемента
+  item_index <- 1
+  
+  if(!is.null(time.points.title)){
+  new_colnames <- setNames(time.points.title, seq_along(time.points.title))
+  }
+  
+  for(item in list_its){
+    
+    id_groups <- item$id_groups
+    comb_list <- combn(item$id.bin,2,simplify = FALSE)
+    comb_list_all <- item$id.bin
+    current_index <- item_index
+    new_order <- as.character(item$point.time)
+    
+  for(g in id_groups){
+    
+    comb_test <- unlist(comb_list)
+    print(paste("22",comb_test))
+    
+    df <- as.matrix(data[data[[item$id.group]] %in% g,])
+
+    if(!is.null(time.points.title)){
+    df_order <- data.frame(id.bin = item$id.bin, point.time = item$point.time)
+    df_order <- df_order[order(df_order$point.time), ]
+    df <- df[, df_order$id.bin]
+    colnames(df) <- df_order$point.time
+    colnames(df) <- new_colnames[colnames(df)]
+    
+    df_full <- data.frame(matrix(" ", nrow = nrow(df), ncol = length(time.points.title)))
+    colnames(df_full) <- time.points.title
+    intersect_cols <- intersect(colnames(df_full), colnames(df)) 
+    intersect_cols <- as.character(intersect_cols)
+    df_full[,intersect_cols] <- df[,intersect_cols]
+    colnames(df_full) <- time.points.title
+    df <- as.matrix(df_full)
+    
+    }
+    if(is.null(time.points.title)){
+      df_cols <- unique(unlist(item$id.bin))
+      df <- df[,df_cols]
+      colnames(df) <- item$name.title
       
-      # data$null <- NA
-      x = unlist(columns.list, recursive = TRUE)
-      x.length = length(x)
-      id.columns   = x[seq(1,x.length,2)]
-      type.columns = x[seq(2,x.length,2)]
-      id.columns   = as.integer(id.columns)
-      type.columns = as.character(type.columns)
-      #print(comb)
-      columns <- id.columns
-      print(paste(id.columns,type.columns))
-      
-      #----------------------------
-      #combination <- lapply(combination,combn,2,simplify=FALSE)
-      comb_list_N_B_C <- combination#comb_list
-      
-      comb_test <- unlist(comb_list_N_B_C[c])
-      print(paste("22",comb_test))
-      comb_test1 <-unlist(comb_list_N_B_C,combn,recursive = FALSE)
-      print(paste("33",comb_test1))
-      
-      
-      df = as.matrix(data[data[[id.group]] %in% g,])
-      #df <- as.matrix(apply(df, 2, as.numeric))
-      df <- df[,unique(unlist(comb_list[c]))]
-      #df.comp <- as.data.frame(df)
-      col.list <- dplyr::bind_rows(columns.list)
-      
-      col_type_list <-lapply(comb_test, function(x) col.list$type[match(x, col.list$id)])
-      
-      col_type_list <- unlist(col_type_list)
-      print(col_type_list)
-      common.list <- lapply(1:length(comb_test), function(x) list(id = comb_test[[x]], type = col_type_list[[x]]))
-      print(paste("1111",common.list))
-      #-----------------------------------------------------------------
-      if(comp.flag==T){
-        sr <- cmp.group.all(id.group     = id.group,
-                            group.labels = id_groups,
-                            columns.list = common.list,
-                            data         = data,
-                            save.file.cmp.2groups    = F,
-                            PATH         = path.dir.out,
-                            FILENAME     = paste('не открывать',c),
-                            result = NULL)
-        rr <- as.matrix(sr[,5])
-        rr <- as.vector(rr)
-      }
-      if(is.matrix(df)){
-        df <- t(apply(df, 1, function(x) {
-          if(any(is.na(x))) x[1:length(x)] <- NA
-          x
-        }))
-      }
-      else{
-        df <- as.data.frame(t(df))
-        df <- t(apply(df, 1, function(x) {
-          if(any(is.na(x))) x[1:length(x)] <- NA
-          x
-        }))
-        df <- as.vector(df)
-      }
-      
-      if(all(col_type_list=="num")){
-        if(is.matrix(df)==TRUE){
-          df <- as.matrix(apply(df, 2, as.numeric))
-          
-          med <- paste(apply(df, 2,median.my),
-                       apply(df,2,function(x){ifelse(any(!is.na(x)),quantile.interval.my(x),"")}),"\n",round(apply(df, 2,mean,na.rm=TRUE),2),"±",round(apply(df, 2,sd,na.rm=TRUE),2),"\n","(",round(apply(df, 2,min.my,na.rm=TRUE),2),"-",round(apply(df, 2,max.my,na.rm=TRUE),2),")")
-        }
-        else{
-          med <- lapply(df,'*',NA)
-        }
-      }
-      if(all(col_type_list=="bin")){
-        df <- as.matrix(apply(df, 2, as.numeric))
-        med <- apply(df, 2,bin.my)
-        
-      }
-      if(all(col_type_list=="cat")){
-        #med <- table(df)
-        
-        #df.5 <- prop.table(table(df))
-        #med <- mapply(paste, apply(df, 2, table),apply(df, 2, paste),collapse="\n")
-        med <- apply(df,2, f)
-        #med <- apply(med,2,paste,collapse="\n")
-        
-        
-      }
-      
-      data_df = as.matrix(data[data[[id.group]] %in% g,])
-      #data_df <- as.matrix(apply(data_df, 2, as.numeric))
-      data_df_naomit = data_df[,unique(unlist(comb_list[c]))]
-      df.matrix <- ifelse(is.matrix(data_df_naomit),na.count.string(data_df_naomit[,1]),na.count.string(data_df_naomit[,1]))
-      #df.matrix <- na.count.string(df[,1])
-      #print(paste(df.matrix))
-      result <- data.frame(matrix(NA,ncol=length(med)+2,nrow=1))
-      result[1,] <- c(paste0(g,"\nN=",df.matrix),med,"")
-      if(comp.flag==T){
-        if(g==tail(id_groups, n=1)){
-          result[ncol(result)+1-3+1,] <- c(paste("—равнение"),rr,"")
-          result[ncol(result)+1-3+1,ncol(result)+1] <- ""
-          
-          # if(all(col_type_list=="cat")){
-          # result <- result[complete.cases(result[ ,1]),]
-          # }
-        }
-      }
-      for(k in 1:length(comb_list[[1]])){
-        #отсюда num
-        
-        i <- comb_list[[c]][[k]][1]
-        j <- comb_list[[c]][[k]][2]
-        if(all(col_type_list=="num")){
-          # data_df[,i] <- as.numeric(data_df[,i])
-          # data_df[,j] <- as.numeric(data_df[,j])
-          data_df <- as.matrix(apply(data_df, 2, as.numeric))
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
-            }
-          }
-          #----------------------------------------------------------------
-          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
-              
-            }
-          }
-          #--------------------------------------------------------------------
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3  )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              test <- wilcox.test(data_df[,i],data_df[,j],conf.int=TRUE,paired=T)
-            }
-          }
-        }
-        if(all(col_type_list=="bin")){
-          data_df <- as.matrix(apply(data_df, 2, as.numeric))
-          #if(all(is.na(data_df[,i])==T))
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
-            if(all(data_df[,i]=="1")|all(data_df[,j]=="1")){
-              test1 <- fisher.test(list.append(data_df[,i],0),list.append(data_df[,j],0))
-              test <- mcnemar.test(list.append(data_df[,i],0),list.append(data_df[,j],0),correct = TRUE)
-            }else if(all(data_df[,i]=="0")|all(data_df[,j]=="0")){
-              test1 <- fisher.test(list.append(data_df[,i],1),list.append(data_df[,j],1))
-              test <- mcnemar.test(list.append(data_df[,i],1),list.append(data_df[,j],1),correct = TRUE)
-            }else{
-              unique.flag = 0
-              if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F  )
-              {
-                
-                cat ("\nunique values in first group too small")
-                unique.flag = 1
-                
-              }
-              if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F  )
-              {
-                
-                cat ("\nunique values in first group too small")
-                unique.flag = 1
-                
-              }
-              
-              if(unique.flag == 1 ) {
-                test1 = NULL
-                test = NULL
-              } else{
-                test1 <- fisher.test(data_df[,i],data_df[,j])
-                test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
-                
-              }
-              # test1 <- fisher.test(data_df[,i],data_df[,j])
-              # test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
-            }
-          }
-          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
-            unique.flag = 0
-            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test1 = NULL
-              test = NULL
-            } else{
-              test1 <- fisher.test(data_df[,i],data_df[,j])
-              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
-              
-            }
-          } 
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
-            unique.flag = 0
-            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test1 = NULL
-              test = NULL
-            } else{
-              test1 <- fisher.test(data_df[,i],data_df[,j])
-              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
-              
-            }       
-          }
-          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
-            unique.flag = 0
-            if ( length(data_df[,i]) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(data_df[,j]) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test1 = NULL
-              test = NULL
-            } else{
-              test1 <- fisher.test(data_df[,i],data_df[,j])
-              test <- mcnemar.test(data_df[,i],data_df[,j],correct = TRUE)
-              
-            }        
-          }
-          
-        }
-        if(all(col_type_list=="cat")){
-          
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == FALSE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              contingency.table.1 = table(data_df[,i],data_df[,j])
-              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-              contingency.table.1[row(contingency.table.1) == 
-                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
-              sym_mat <- contingency.table.1  
-              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-              print(contingency.table.1)
-              test <- nominalSymmetryTest(contingency.table.1,
-                                          digits     = 3,
-                                          MonteCarlo = TRUE,
-                                          ntrial     = 1000000)$Global.test.for.symmetry
-              test <- p_value_formatted(test$p.value)
-            }
-            
-            
-            
-          }
-          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == FALSE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F)
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              contingency.table.1 = table(data_df[,i],data_df[,j])
-              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-              contingency.table.1[row(contingency.table.1) == 
-                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
-              sym_mat <- contingency.table.1  
-              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-              print(contingency.table.1)
-              test <- nominalSymmetryTest(contingency.table.1,
-                                          digits     = 3,
-                                          MonteCarlo = TRUE,
-                                          ntrial     = 1000000)$Global.test.for.symmetry
-              test <- p_value_formatted(test$p.value)
-            }
-          } 
-          if((all(is.na(data_df[,i])) == FALSE) & (all(is.na(data_df[,j])) == TRUE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              contingency.table.1 = table(data_df[,i],data_df[,j])
-              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-              contingency.table.1[row(contingency.table.1) == 
-                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
-              sym_mat <- contingency.table.1  
-              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-              print(contingency.table.1)
-              test <- nominalSymmetryTest(contingency.table.1,
-                                          digits     = 3,
-                                          MonteCarlo = TRUE,
-                                          ntrial     = 1000000)$Global.test.for.symmetry
-              test <- p_value_formatted(test$p.value)
-            }       
-          }
-          if((all(is.na(data_df[,i])) == TRUE) & (all(is.na(data_df[,j])) == TRUE)){
-            unique.flag = 0
-            if ( length(unique(data_df[,i])) < 3 | all(is.na(data_df[,i]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            if ( length(unique(data_df[,j])) < 3 | all(is.na(data_df[,j]))==F )
-            {
-              
-              cat ("\nunique values in first group too small")
-              unique.flag = 1
-              
-            }
-            
-            if(unique.flag == 1 ) {
-              test = NULL
-            } else{
-              contingency.table.1 = table(data_df[,i],data_df[,j])
-              contingency.table.1 <- make_symmetric_matrix(contingency.table.1)
-              contingency.table.1[row(contingency.table.1) == 
-                                    col(contingency.table.1) & contingency.table.1 == 0] <- 1
-              sym_mat <- contingency.table.1  
-              contingency.table.1[sym_mat == t(sym_mat) & sym_mat == 0] <- 1
-              print(contingency.table.1)
-              test <- nominalSymmetryTest(contingency.table.1,
-                                          digits     = 3,
-                                          MonteCarlo = TRUE,
-                                          ntrial     = 1000000)$Global.test.for.symmetry
-              test <- p_value_formatted(test$p.value)
-            }        
-          }
-          
-        }
-        #------------------------------------------------------------
-        if(all(col_type_list=="num")){
-          if(!is.null(test)){
-            diff.1 <- round(data_df[,i]-data_df[,j],2)
-            diff.1 <- NaRV.omit(diff.1)
-            diff.p <- MedianCI(outer(diff.1,diff.1,"+")/2,sides="two.sided",method="exact",na.rm=TRUE)
-            diff.p.1 <- round(diff.p[[1]], 2)
-            
-            res.ci      = paste(c( '[',
-                                   as.character(round(diff.p[[2]],2)),
-                                   '; ',
-                                   as.character(round(diff.p[[3]],2)),
-                                   ']'), collapse=''
-            )
-            
-            smd = epi.smd(mean.trt = mean(data_df[,i], na.rm =T), 
-                          sd.trt = sd(data_df[,i], na.rm = T), 
-                          n.trt = length(data_df[,i]),
-                          mean.ctrl = mean(data_df[,j], na.rm =T),
-                          sd.ctrl = sd(data_df[,j], na.rm = T),
-                          n.ctrl = length(data_df[,j]),
-                          names  = c('data_df[,i]','data_df[,j]'),
-                          method = "cohens",
-                          conf.level = 0.95)
-            res.smd     = smd$md[['est']] %>% round(2)
-            res.smd.ci  = paste0("[", smd$md[['lower']]%>% round(2), 
-                                 "; ", smd$md[['upper']]%>% round(2), "]")
-            
-            p.value <- p_value_formatted(round(test$p.value,3))
-            result[k, length(med)+2] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",paste(diff.p.1,res.ci,"\n",res.smd," ",res.smd.ci))
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-          if(is.null(test)){
-            diff.1 <- "NA"
-            p.value <- "NA"
-            result[k, length(med)+2] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",diff.1)
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-        }
-        if(all(col_type_list=="bin")){
-          if(!is.null(test)){
-            
-            
-            p.value <- p_value_formatted(round(test$p.value,3))
-            result[k, length(med)+2] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",test1$estimate," [",
-                                               round(test1$conf.int[1],1),
-                                               "; ",
-                                               round(test1$conf.int[2],1),
-                                               "]")
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-          if(is.null(test)){
-            diff.1 <- "NA"
-            p.value <- "NA"
-            result[k, length(med)+2] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",diff.1)
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-          
-        }
-        if(all(col_type_list=="cat")){
-          if(!is.null(test)){
-            
-            
-            p.value <- test#p_value_formatted(round(test$p.value,3))
-            result[k, length(med)+2] <- ""#paste0(i,"-",j,": ","")
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-          if(is.null(test)){
-            diff.1 <- "NA"
-            p.value <- "NA"
-            result[k, length(med)+2] <- ""#paste0(i,"-",j,": ",diff.1)
-            result[k, length(med)+3] <- paste0(colnames(data_df)[i],"-",colnames(data_df)[j],": ",p.value)
-          }
-          
-        }
-        #досюда num
-        
-        
-      }
-      
-      result[1, length(med)+2]=paste(result[,length(med)+2],collapse = "\n")
-      result[1, length(med)+3]=paste(result[,length(med)+3],collapse = "\n")
-      # if(g==tail(id_groups, n=1)){
-      # result[2,length(med)]=paste(result[,length(med)],collapse = "\n")
-      # }
-      result <- result[complete.cases(result[ ,1]),]
-      last.res <- tail(result,n=1)
-      #result <- na.omit(result)
-      
-      result_list[[g]] <- result[complete.cases(result[ ,1]),]
+    df_full <- data.frame(matrix(" ", nrow = nrow(df), ncol = length(unique_col_titles)))
+    colnames(df_full) <- unique_col_titles
+
+    intersect_cols <- intersect(colnames(df_full), colnames(df))
+    intersect_cols <- as.character(intersect_cols)
+    df_full[,intersect_cols] <- df[,intersect_cols]
+    colnames(df_full) <- unique_col_titles
+    df <- as.matrix(df_full)
     }
     
+    col_type_list <- rep(item$type, length(comb_list_all))
+
+    col_type_list <- unlist(col_type_list)
+    print(col_type_list)
+
+    common.list <- lapply(1:length(comb_list_all), function(x) list(id = comb_list_all[[x]], type = col_type_list[[x]]))
+    print(paste("1111",common.list))
+
+
+
+    if(comp.flag==T){
+    sr <- cmp.group.all(id.group     = item$id.group,
+                  group.labels = id_groups,
+                  columns.list = common.list,
+                  data         = data,
+                  save.file.cmp.2groups    = F,
+                  PATH         = path.dir.out,
+                  FILENAME     = "FILE",
+                  result = NULL)
+    rr <- as.matrix(sr[,5])
+    rr <- as.vector(rr)
+
+    }
+    #
+    # #---------------------------------------------------------------------------
+    df <- standardize_data(df)
+    # #---------------------------------------------------------------------------
+
+    if(comp.flag==T){
+
+      empty_cols <- which(df == " ", arr.ind = TRUE)
+      insert_idxs <- unique(empty_cols[,2])
+      if(length(insert_idxs)!=0){
+      max_idx <- length(rr) + length(insert_idxs)
+      new_rr <- character(max_idx)
+      rr_idx <- 1
+      i <- 1
+       for (i in 1:max_idx) {
+        if(i %in% insert_idxs) {
+          new_rr[i] <- "-"
+        } else {
+          if(rr_idx <= length(rr)) {
+            new_rr[i] <- rr[rr_idx]
+            rr_idx <- rr_idx + 1
+          }
+        }
+       }
+      if(is.null(time.points.title)){
+      rr <- new_rr
+      } else{
+      #browser()
+      rr_order <- new_rr
+      idx <- rep(NA, length(rr_order))
+      idx[item$point.time] <- 1:length(item$point.time)
+      rr_order_new <- rr_order[idx]
+      rr_order_new[!is.na(idx)] <- rr_order[item$point.time]
+      rr_order_new <- ifelse(is.na(rr_order_new), "-", rr_order_new)
+      rr <- rr_order_new 
+      }
+      }
+    }
     
-    result_new <- do.call(rbind,result_list)
-    hh <- as.numeric(unique(unlist(comb_list[c])))
-    #print(paste(comb_test))
-    names(result_new) <- c("GROUP",colnames(data[,comb_test]),"dif","p.value")
-    res_ls[[c]] <- result_new
+    #---------------------------------------------------------------------------
+    results1 <- type_columns_data(df, col_type_list)
+    df <- results1$df
+    med <- results1$column_stats
+    #---------------------------------------------------------------------------
+    data_df = as.matrix(data[data[[item$id.group]] %in% g,])
+    data_df_naomit = data_df[,unique(unlist(comb_list))]
+    df.matrix <- ifelse(is.matrix(data_df_naomit),na.count.string(data_df_naomit[,1]),na.count.string(data_df_naomit[,1]))
+
+    result <- data.frame(matrix(NA,ncol=length(med)+2,nrow=1))
+    result[1,] <- c(paste0(g,"\nN=",df.matrix),med,"")
+    
+    if(comp.flag==T){
+    if(g==tail(id_groups, n=1)){
+      last_row <- nrow(result)+1
+      result <- rbind(result, rep(NA, ncol(result))) 
+      result[last_row, 1] <- "Сравнение:"
+      rr <- c(rr, rep(NA, ncol(result) - length(rr)-1))
+    for(i in 1:length(rr)){
+     result[last_row, i+1] <- rr[i] 
+     }
+    }
+    }
+    list_z <- unlist(lapply(ncol(df), combn, 2, simplify=FALSE), recursive=FALSE) 
+    
+    #---------------------------------------------------------------------------
+    #browser()
+    result <- conduct_tests(data_df,df, col_type_list, med,result,list_z)
+    #---------------------------------------------------------------------------
+    #browser()
+    #result[1, length(med)+2] <- toString(result[,length(med)+2]) 
+    #result[1, length(med)+3] <- toString(result[,length(med)+3])
+    result[1, length(med)+2] <- paste(result[,length(med)+2], collapse="\n") 
+    result[1, length(med)+3] <- paste(result[,length(med)+3], collapse="\n")
+    if(g==tail(id_groups, n=1)){
+    col1_idx <- ncol(result) - 1
+    col2_idx <- ncol(result)
+    row_idx <- 2
+    result[row_idx, col1_idx] <- NA
+    result[row_idx, col2_idx] <- NA
+    }
+    result <- result[complete.cases(result[ ,1]),]
+    last.res <- tail(result,n=1)
+    #result <- na.omit(result)
+    
+    result_list[[g]] <- result[complete.cases(result[ ,1]),]
   }
-  result_new1 <-do.call(rbind.data.frame, lapply(res_ls, function(x) unname(rbind(names(x), as.matrix(x)))))#rbindlist(res_ls)
+      
+
+  result_new <- do.call(rbind,result_list)
+  hh <- as.numeric(unique(unlist(comb_list)))
+  names(result_new) <- c("Группа",unique_col_titles,"Величина эффекта","p-уровень,\nкоррекция")
+  
+  temp_results[[current_index]] <- result_new
+  item_index <- item_index + 1  
+  current_index <- current_index + 1
+  }
+  result_new1 <-do.call(rbind.data.frame, lapply(temp_results, function(x) unname(rbind(names(x), as.matrix(x)))))
   names(result_new1) <- result_new1[1,]
   result_new1 <- result_new1[-1,]
-  #rbind(res_ls[[1]],names(res_ls[[2]]),setNames(res_ls[[2]],names(res_ls[[1]])))#do.call(rbind,res_ls)
-  # names(result_new) <- c("GROUP",as.character(unique(unlist(colnames(data[,comb_test])))),"dif","p.value")
   
+  na.list <- list("na", NA, NA, NA, NA)
+  while(length(na.list)!=ncol(result_new1)){
+    na.list <- list.append(na.list,NA)
+  }
+  #------------------------------------------------------------------------------------
+  col.names = names(result_new1)
+  s <- as.data.frame(na.list)
+  names(s) <- col.names
+  result_new1 <- rbind(s,result_new1)
+  
+  for(i in 1:nrow(result_new1)){
+    if(result_new1[i,1]=="Группа"){
+      result_new1[i, ] <- na.list
+    }
+  }
+  col_name <- sapply(comb_list, function(x) {
+    col_index <- x[1]  
+    col_name <- colnames(data)[col_index]
+    return(col_name)
+  })
+  #browser()
+  col.title <- sapply(list_its, get_new_group)
+  result_new1[result_new1$'Группа' == "na", "Группа"] <- col.title
   path.data = paste0(PATH, FILENAME,".csv")
-  
   write.table(result_new1,file=path.data,sep=";",dec=",",na="",col.names = T,row.names = F)
   
+  #-----------------------------------------------------------------------------
+   
+  result_new1 <- format_table_with_na_split(result_new1)
+  #-----------------------------------------------------------------------------
   
   return(result_new1)
-}
-
-f <- function(x) {
-  tx <- table(x)
-  px <- proportions(tx)
-  paste(sprintf('%s - %s (%s%%)', names(tx), tx, round(px*100, 1)), collapse='\n')
 }
