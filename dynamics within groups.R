@@ -2,6 +2,8 @@ source("C:/Users/works/Documents/type_colomns_data.R")
 source("C:/Users/works/Documents/standardize_data.R")
 source("C:/Users/works/Documents/conduct_tests.R")
 source("C:/Users/works/Documents/format_table_with_na_split.R")
+source("C:/Users/works/Documents/check_arguments.R")
+source("C:/Users/works/Documents/validate_list_its.R")
 
 library(DescTools)
 library(IDPmisc)
@@ -13,7 +15,9 @@ library(magrittr)
 
 dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=NULL){
   
-  if(mi)
+  check_arguments(data, PATH, FILENAME, comp.flag, list_its)
+  
+  validate_list_its.R(list_its)
   #-----------------------------------------------------------------------------
   # €звлечение всех значений name.title
   name_titles <- map(list_its, 'name.title') %>% unlist
