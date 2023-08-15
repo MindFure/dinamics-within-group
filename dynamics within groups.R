@@ -13,39 +13,39 @@ library(officer)
 library(purrr)
 library(magrittr)
 
-dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=NULL){
+dynamics <- function(data,PATH,FILENAME,comp.flag=T,indicators.description,time.points.title=NULL){
 
-  check_arguments(data, PATH, FILENAME, comp.flag, list_its,time.points.title)
+  check_arguments(data, PATH, FILENAME, comp.flag, indicators.description,time.points.title)
   
-  validate_list_its(list_its)
+  validate_indicators.description(indicators.description)
   
   #-----------------------------------------------------------------------------
   
   # Проверка на одинаковость длинны списков
-  lengths <- sapply(list_its, function(x) length(x$name.title))
+  lengths <- sapply(indicators.description, function(x) length(x$time.point.names))
   all_lengths_equal <- length(unique(lengths)) == 1
   
   # Проверяем, что значения идентичны  
-  titles_identical <- identical(list_its[[1]]$name.title, list_its[[2]]$name.title)
+  titles_identical <- identical(indicators.description[[1]]$time.point.names, indicators.description[[2]]$time.point.names)
   
   if(all_lengths_equal && titles_identical) {
     
-     unique_col_titles <- list_its[[1]]$name.title
+     unique_col_titles <- indicators.description[[1]]$time.point.names
      
   }else if (all_lengths_equal && !titles_identical){
   
-    all_titles <- unlist(lapply(list_its, function(x) x$name.title))
+    all_titles <- unlist(lapply(indicators.description, function(x) x$time.point.names))
     unique_col_titles <- unique(all_titles)
   
   }else if(length(unique(lengths)) < length(lengths)){ 
     
-  all_titles <- unlist(lapply(list_its, function(x) x$name.title))
+  all_titles <- unlist(lapply(indicators.description, function(x) x$time.point.names))
   unique_col_titles <- unique(all_titles) 
   
   } else if(length(unique(lengths)) == length(lengths)){
     
-  #собиравем name.title со всех списков и делаем их уникальными
-  all_titles <- unlist(lapply(list_its, function(x) x$name.title))  
+  #собиравем time.point.names со всех списков и делаем их уникальными
+  all_titles <- unlist(lapply(indicators.description, function(x) x$time.point.names))  
   unique_col_titles <- unique(all_titles)
   
   }
@@ -63,26 +63,26 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
   new_colnames <- setNames(time.points.title, seq_along(time.points.title))
   }
   
-  for(item in list_its){
+  for(item in indicators.description){
     
-    id_groups <- item$id_groups
-    comb_list <- combn(item$id.bin,2,simplify = FALSE)
-    comb_list_all <- item$id.bin
+    group.labels <- item$group.labels
+    comb_list <- combn(item$columns.id,2,simplify = FALSE)
+    comb_list_all <- item$columns.id
     current_index <- item_index
-    new_order <- as.character(item$point.time)
+    new_order <- as.character(item$time.point.indices)
     
-  for(g in id_groups){
+  for(g in group.labels){
     
     comb_test <- unlist(comb_list)
     print(paste("22",comb_test))
     
-    df <- as.matrix(data[data[[item$id.group]] %in% g,])
+    df <- as.matrix(data[data[[item$group.col.id]] %in% g,])
 
     if(!is.null(time.points.title)){
-    df_order <- data.frame(id.bin = item$id.bin, point.time = item$point.time)
-    df_order <- df_order[order(df_order$point.time), ]
-    df <- df[, df_order$id.bin]
-    colnames(df) <- df_order$point.time
+    df_order <- data.frame(columns.id = item$columns.id, time.point.indices = item$time.point.indices)
+    df_order <- df_order[order(df_order$time.point.indices), ]
+    df <- df[, df_order$columns.id]
+    colnames(df) <- df_order$time.point.indices
     colnames(df) <- new_colnames[colnames(df)]
     
     df_full <- data.frame(matrix(" ", nrow = nrow(df), ncol = length(time.points.title)))
@@ -95,9 +95,9 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
     
     }
     if(is.null(time.points.title)){
-      df_cols <- unique(unlist(item$id.bin))
+      df_cols <- unique(unlist(item$columns.id))
       df <- df[,df_cols]
-      colnames(df) <- item$name.title
+      colnames(df) <- item$time.point.names
       
     df_full <- data.frame(matrix(" ", nrow = nrow(df), ncol = length(unique_col_titles)))
     colnames(df_full) <- unique_col_titles
@@ -120,8 +120,8 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
 
 
     if(comp.flag==T){
-    sr <- cmp.group.all(id.group     = item$id.group,
-                  group.labels = id_groups,
+    sr <- cmp.group.all(group.col.id     = item$group.col.id,
+                  group.labels = group.labels,
                   columns.list = common.list,
                   data         = data,
                   save.file.cmp.2groups    = F,
@@ -162,9 +162,9 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
       #browser()
       rr_order <- new_rr
       idx <- rep(NA, length(rr_order))
-      idx[item$point.time] <- 1:length(item$point.time)
+      idx[item$time.point.indices] <- 1:length(item$time.point.indices)
       rr_order_new <- rr_order[idx]
-      rr_order_new[!is.na(idx)] <- rr_order[item$point.time]
+      rr_order_new[!is.na(idx)] <- rr_order[item$time.point.indices]
       rr_order_new <- ifelse(is.na(rr_order_new), "-", rr_order_new)
       rr <- rr_order_new 
       }
@@ -176,7 +176,7 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
     df <- results1$df
     med <- results1$column_stats
     #---------------------------------------------------------------------------
-    data_df = as.matrix(data[data[[item$id.group]] %in% g,])
+    data_df = as.matrix(data[data[[item$group.col.id]] %in% g,])
     data_df_naomit = data_df[,unique(unlist(comb_list))]
     df.matrix <- ifelse(is.matrix(data_df_naomit),na.count.string(data_df_naomit[,1]),na.count.string(data_df_naomit[,1]))
 
@@ -184,7 +184,7 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
     result[1,] <- c(paste0(g,"\nN=",df.matrix),med,"")
     
     if(comp.flag==T){
-    if(g==tail(id_groups, n=1)){
+    if(g==tail(group.labels, n=1)){
       last_row <- nrow(result)+1
       result <- rbind(result, rep(NA, ncol(result))) 
       result[last_row, 1] <- "Сравнение:"
@@ -205,7 +205,7 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
     #result[1, length(med)+3] <- toString(result[,length(med)+3])
     result[1, length(med)+2] <- paste(result[,length(med)+2], collapse="\n") 
     result[1, length(med)+3] <- paste(result[,length(med)+3], collapse="\n")
-    if(g==tail(id_groups, n=1)){
+    if(g==tail(group.labels, n=1)){
     col1_idx <- ncol(result) - 1
     col2_idx <- ncol(result)
     row_idx <- 2
@@ -253,7 +253,7 @@ dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=N
     return(col_name)
   })
   #browser()
-  col.title <- sapply(list_its, get_new_group)
+  col.title <- sapply(indicators.description, get_new_group)
   result_new1[result_new1$'Группа' == "na", "Группа"] <- col.title
   path.data = paste0(PATH, FILENAME,".csv")
   write.table(result_new1,file=path.data,sep=";",dec=",",na="",col.names = T,row.names = F)
