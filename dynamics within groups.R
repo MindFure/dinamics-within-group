@@ -14,61 +14,13 @@ library(purrr)
 library(magrittr)
 
 dynamics <- function(data,PATH,FILENAME,comp.flag=T,list_its,time.points.title=NULL){
-  
-  check_arguments(data, PATH, FILENAME, comp.flag, list_its)
-  
-  validate_list_its.R(list_its)
-  #-----------------------------------------------------------------------------
-  # Извлечение всех значений name.title
-  name_titles <- map(list_its, 'name.title') %>% unlist
-  
-  # Вычисление частоты каждого значения
-  #value_counts <- table(name_titles)
-  
-  # Получение значений, которые встречаются два или более раза
-  #allowed_values <- names(value_counts[value_counts >= 2])
-  
-  # Проверка на наличие неверных значений
-  allowed_values <- time.points.title
 
-  # Проверка каждого вложенного списка
-  for(i in seq_along(list_its)) {
-    list_name_titles <- list_its[[i]]$name.title
-    
-    # Проверка на наличие неверных значений
-    incorrect_values <- list_name_titles[!(list_name_titles %in% allowed_values)]
-    
-    if(length(incorrect_values) > 0) {
-      warning(paste0("Найдены некорректные значения в списке '", list_its[[i]]$title, "': ", 
-                  paste(incorrect_values, collapse = ", "), "."))
-    }
-  }
+  check_arguments(data, PATH, FILENAME, comp.flag, list_its,time.points.title)
   
-  print("Все значения name.title корректны.")
-  #-----------------------------------------------------------------------------
-  #browser()
-  # Получение всех уникальных name.title
-  all_name_titles <- map(list_its, 'name.title') %>% unlist %>% unique
-
-  # Создание time_points_title
-  time_points_title <- seq_along(all_name_titles)
-  
-  # Проверка каждого вложенного списка
-  for(i in seq_along(list_its)) {
-    point_times <- list_its[[i]]$point.time
-    
-    # Проверка на наличие неверных значений
-    incorrect_values <- point_times[!(point_times %in% time_points_title)]
-    
-    if(length(incorrect_values) > 0) {
-      warning(paste0("Найдены некорректные значения в списке '", list_its[[i]]$title, "': ", 
-                  paste(incorrect_values, collapse = ", "), "."))
-    }
-  }
-  
-  print("Все значения point.time корректны.")
+  validate_list_its(list_its)
   
   #-----------------------------------------------------------------------------
+  
   # Проверка на одинаковость длинны списков
   lengths <- sapply(list_its, function(x) length(x$name.title))
   all_lengths_equal <- length(unique(lengths)) == 1
